@@ -12,11 +12,21 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <!-- PERF: preconnects para CDNs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <!-- PERF: Google Fonts vía link (no @import que bloquea render) con display=swap -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS (CDN JIT — necesario para clases dinámicas) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <!-- PERF: Chart.js cargado con defer (no bloquea el render inicial) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PERF: Font Awesome cargado async (no bloquea render) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">;
+  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"></noscript>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* PERF: Google Fonts loaded via <link> in <head> instead of @import */
 :root{--bg:#f1f5f9;--bg2:#eef2f7;--surface:rgba(255,255,255,.95);--surface-solid:#fff;--border:rgba(226,232,240,.8);--border-solid:#e2e8f0;--text:#1e293b;--text2:#334155;--text3:#64748b;--text4:#94a3b8;--input-bg:#fff;--input-border:#cbd5e1;--pill-bg:#f1f5f9;--pill-border:#e2e8f0;--pill-text:#475569;--card-shadow:0 4px 6px -1px rgba(0,0,0,.1);--kpi-bg:#f8fafc}
 .dark{--bg:#0f172a;--bg2:#1e293b;--surface:rgba(30,41,59,.95);--surface-solid:#1e293b;--border:rgba(51,65,85,.8);--border-solid:#334155;--text:#f1f5f9;--text2:#cbd5e1;--text3:#94a3b8;--text4:#64748b;--input-bg:#0f172a;--input-border:#475569;--pill-bg:#334155;--pill-border:#475569;--pill-text:#cbd5e1;--card-shadow:0 4px 6px -1px rgba(0,0,0,.3);--kpi-bg:#334155}
 html{padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
@@ -256,7 +266,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           </div>
           <div class="relative">
             <label for="concepto" class="block text-sm font-medium text-slate-700 mb-1">Concepto</label>
-            <input type="text" id="concepto" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500" oninput="mostrarSugerencias(this.value)" onkeydown="navegarSugerencias(event)">
+            <input type="text" id="concepto" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500" oninput="mostrarSugerenciasDebounced(this.value)" onkeydown="navegarSugerencias(event)">
             <div id="suggestions" class="suggestions hidden"></div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 grid-form">
@@ -325,7 +335,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <h2 class="text-2xl font-bold">Historial</h2>
         <div class="filter-row flex flex-wrap gap-2 w-full lg:w-auto">
-          <input type="text" id="buscar-historial" placeholder="Buscar..." class="px-4 py-2 rounded-lg border border-slate-300 text-sm w-full sm:w-auto" oninput="filtrarHistorial()">
+          <input type="text" id="buscar-historial" placeholder="Buscar..." class="px-4 py-2 rounded-lg border border-slate-300 text-sm w-full sm:w-auto" oninput="filtrarHistorialDebounced()">
           <select id="filtro-centro" onchange="filtrarHistorial()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm"><option value="todos">Todos los centros</option></select>
           <select id="filtro-tipo" onchange="filtrarHistorial()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm"><option value="todos">Todos los tipos</option><option value="F">Fijos</option><option value="V">Variables</option></select>
           <select id="filtro-metodo" onchange="filtrarHistorial()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm"><option value="todos">Todos los métodos</option></select>
@@ -507,6 +517,8 @@ let API_TOKEN = sessionStorage.getItem(STORAGE_KEYS.apiTokenSession) || localSto
 const $ = id => document.getElementById(id);
 const safeNumber = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
 const formatearNumero = n => parseInt(n || 0, 10).toLocaleString('es-AR');
+/* PERF: debounce genérico para inputs de búsqueda */
+function debounce(fn, ms = 150) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }
 /* ── SEGURIDAD: escape HTML para prevenir XSS ── */
 const escapeHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const escapeAttr = s => escapeHtml(s);
@@ -541,8 +553,21 @@ function enqueueOperation(item) {
   setPendingQueue(queue);
 }
 function saveCache(data) {
-  localStorage.setItem(STORAGE_KEYS.dataCache, JSON.stringify(data || []));
-  localStorage.setItem(STORAGE_KEYS.cacheMeta, JSON.stringify({ savedAt: new Date().toISOString(), count: Array.isArray(data) ? data.length : 0 }));
+  /* PERF: diferir la serialización pesada para no bloquear el hilo principal */
+  try {
+    const json = JSON.stringify(data || []);
+    localStorage.setItem(STORAGE_KEYS.dataCache, json);
+    localStorage.setItem(STORAGE_KEYS.cacheMeta, JSON.stringify({ savedAt: new Date().toISOString(), count: Array.isArray(data) ? data.length : 0 }));
+  } catch (e) {
+    /* PERF: si se excede la quota, limpiar cache viejo e intentar una vez más */
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.dataCache);
+        localStorage.setItem(STORAGE_KEYS.dataCache, JSON.stringify(data || []));
+        localStorage.setItem(STORAGE_KEYS.cacheMeta, JSON.stringify({ savedAt: new Date().toISOString(), count: Array.isArray(data) ? data.length : 0 }));
+      } catch { /* silently fail — cache is optional */ }
+    }
+  }
   updateCacheLabel();
 }
 function loadCache() {
@@ -864,7 +889,7 @@ function toggleDarkMode() {
   if (!$('section-comparar')?.classList.contains('hidden')) renderComparar();
 }
 
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.1.0';
 
 /* ========================================
    INIT
@@ -1087,18 +1112,23 @@ function showTab(tab) {
 ======================================== */
 function procesarPatrones() {
   const map = new Map();
+  /* PERF: recolectar centros, metodos, meses en la misma pasada */
+  const centrosSet = new Set(), metodosSet = new Set(), mesesSet = new Set();
   for (const g of allData) {
     const key = `${g.Concepto||''}|${g.Centro||''}`;
     if (!map.has(key)) map.set(key, { concepto:g.Concepto, centro:g.Centro, tipo:g.Tipo, metodo:g.Metodo, freq:0, importes:[] });
     const p = map.get(key); p.freq++; const imp = safeNumber(g.Importe); if (imp>0) p.importes.push(imp);
+    if (g.Centro) centrosSet.add(g.Centro);
+    if (g.Metodo) metodosSet.add(g.Metodo);
+    const mk = getMesKey(g.Fecha); if (mk) mesesSet.add(mk);
   }
   patrones = [];
   for (const p of map.values()) { const avg = p.importes.length ? Math.round(p.importes.reduce((a,b)=>a+b,0)/p.importes.length) : 0; patrones.push({ concepto:p.concepto, centro:p.centro, tipo:p.tipo, metodo:p.metodo, frecuencia:p.freq, promedio:avg }); }
   patrones.sort((a,b)=>b.frecuencia-a.frecuencia);
 
-  const centros = uniqueSorted(allData.map(g=>g.Centro));
-  const metodos = uniqueSorted(allData.map(g=>g.Metodo));
-  const meses = uniqueSorted(allData.map(g=>getMesKey(g.Fecha)));
+  const centros = [...centrosSet].sort();
+  const metodos = [...metodosSet].sort();
+  const meses = [...mesesSet].sort();
   $('centros-list').innerHTML = centros.map(c=>`<option value="${escapeAttr(c)}">`).join('');
   $('filtro-centro').innerHTML = '<option value="todos">Todos los centros</option>' + centros.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
   $('filtro-metodo').innerHTML = '<option value="todos">Todos los métodos</option>' + metodos.map(m=>`<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
@@ -1133,6 +1163,8 @@ function seleccionarPatron(concepto,centro) {
   $('importe').focus();
 }
 function filtrarSugerencias() { if ($('concepto').value.length >= 2) mostrarSugerencias($('concepto').value); }
+/* PERF: debounce autocompletado para no filtrar en cada keystroke */
+const mostrarSugerenciasDebounced = debounce(mostrarSugerencias, 120);
 
 /* ========================================
    FIJOS PENDIENTES + RESUMEN
@@ -1263,7 +1295,8 @@ function getFiltrados() {
     if(tipo!=='todos'&&g.Tipo!==tipo) return false;
     if(metodo!=='todos'&&g.Metodo!==metodo) return false;
     return true;
-  }).sort((a,b)=>new Date(b.Fecha||0)-new Date(a.Fecha||0));
+  /* PERF: comparación string directa — YYYY-MM-DD ordena correctamente sin crear Date objects */
+  }).sort((a,b)=>(b.Fecha||'').localeCompare(a.Fecha||''));
 }
 
 function renderHistorial() {
@@ -1292,6 +1325,8 @@ function renderHistorial() {
 }
 
 function filtrarHistorial(){persistHistoryFilters();renderHistorial();}
+/* PERF: debounce para búsqueda por texto (los selects siguen siendo inmediatos) */
+const filtrarHistorialDebounced = debounce(filtrarHistorial, 200);
 function limpiarFiltros(){$('buscar-historial').value='';$('filtro-centro').value='todos';$('filtro-tipo').value='todos';$('filtro-metodo').value='todos';$('filtro-mes-historial').value='todos';persistHistoryFilters();renderHistorial();}
 function exportarHistorialFiltrado(){const f=getFiltrados();let csv='Fecha,Centro,Tipo,Concepto,Metodo,Importe\n';for(const g of f)csv+=[csvEscape(g.Fecha),csvEscape(g.Centro),csvEscape(g.Tipo),csvEscape(g.Concepto),csvEscape(g.Metodo),csvEscape(g.Importe||0)].join(',')+'\n';descargarCSV('historial.csv',csv);}
 function editarGasto(id){
@@ -1310,6 +1345,11 @@ function exportarCSV(){let csv='Fecha,Centro,Tipo,Concepto,Metodo,Importe,ID\n';
    DASHBOARD
 ======================================== */
 function renderDashboard() {
+  /* PERF: guard para carga diferida de Chart.js */
+  if (typeof Chart === 'undefined') {
+    setTimeout(renderDashboard, 200);
+    return;
+  }
   let total=0, fijos=0; const porMes=Object.create(null), porCentro=Object.create(null);
   const hoy = new Date();
   const mesActualKey = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
@@ -1398,6 +1438,7 @@ function initComparar() {
 }
 
 function renderComparar() {
+  if (typeof Chart === 'undefined') { setTimeout(renderComparar, 200); return; }
   const m1=$('comp-mes1').value,m2=$('comp-mes2').value,vista=$('comp-vista').value;
   if(!m1||!m2){limpiarComparar();return;}
   const d1=allData.filter(g=>g.Fecha&&g.Fecha.startsWith(m1)),d2=allData.filter(g=>g.Fecha&&g.Fecha.startsWith(m2));
@@ -1465,58 +1506,59 @@ function agregarCentro(){const n=$('nuevo-centro').value.trim();if(!n){toastWarn
 function unificarCentros(){toastWarn('Función en desarrollo.');}
 
 /* ========================================
-   SWIPE CARDS (historial mobile)
+   SWIPE CARDS (historial mobile) — Event Delegation
+   PERF: un solo set de listeners en el container, no uno por card
 ======================================== */
+const _swipe = { card: null, startX: 0, currentX: 0, threshold: 80, maxSwipe: 120 };
+
 function initSwipeCards() {
-  const cards = document.querySelectorAll('.hist-card[data-id]');
-  cards.forEach(card => {
-    let startX = 0, currentX = 0, swiping = false;
-    const threshold = 80, maxSwipe = 120;
+  const mob = $('historial-cards-mobile');
+  if (!mob || mob._swipeInit) return;
+  mob._swipeInit = true;
 
-    card.addEventListener('touchstart', (e) => {
-      startX = e.touches[0].clientX;
-      currentX = 0;
-      swiping = true;
-      card.classList.add('swiping');
-    }, { passive: true });
+  mob.addEventListener('touchstart', (e) => {
+    const card = e.target.closest('.hist-card[data-id]');
+    if (!card) return;
+    _swipe.card = card;
+    _swipe.startX = e.touches[0].clientX;
+    _swipe.currentX = 0;
+    card.classList.add('swiping');
+  }, { passive: true });
 
-    card.addEventListener('touchmove', (e) => {
-      if (!swiping) return;
-      currentX = e.touches[0].clientX - startX;
-      // Clamp between -maxSwipe and +maxSwipe with resistance
-      const clamped = currentX > 0
-        ? Math.min(currentX * 0.7, maxSwipe)
-        : Math.max(currentX * 0.7, -maxSwipe);
-      card.style.transform = `translateX(${clamped}px)`;
-    }, { passive: true });
+  mob.addEventListener('touchmove', (e) => {
+    if (!_swipe.card) return;
+    _swipe.currentX = e.touches[0].clientX - _swipe.startX;
+    const clamped = _swipe.currentX > 0
+      ? Math.min(_swipe.currentX * 0.7, _swipe.maxSwipe)
+      : Math.max(_swipe.currentX * 0.7, -_swipe.maxSwipe);
+    _swipe.card.style.transform = `translateX(${clamped}px)`;
+  }, { passive: true });
 
-    card.addEventListener('touchend', async () => {
-      if (!swiping) return;
-      swiping = false;
-      card.classList.remove('swiping');
-      const moved = currentX * 0.7;
+  mob.addEventListener('touchend', async () => {
+    const card = _swipe.card;
+    if (!card) return;
+    card.classList.remove('swiping');
+    _swipe.card = null;
+    const moved = _swipe.currentX * 0.7;
 
-      if (moved > threshold) {
-        // Swipe right → editar
-        card.style.transform = `translateX(${maxSwipe}px)`;
-        setTimeout(() => { card.style.transform = ''; editarGasto(card.dataset.id); }, 200);
-      } else if (moved < -threshold) {
-        // Swipe left → borrar
-        card.style.transform = `translateX(-${maxSwipe}px)`;
-        const id = card.dataset.id;
-        const concepto = card.dataset.concepto;
-        const ok = await modalConfirm(`¿Borrar "${concepto}"?`);
-        if (ok) {
-          card.style.transform = `translateX(-100%)`;
-          card.style.opacity = '0';
-          await borrarGasto_direct(id);
-        } else {
-          card.style.transform = '';
-        }
+    if (moved > _swipe.threshold) {
+      card.style.transform = `translateX(${_swipe.maxSwipe}px)`;
+      setTimeout(() => { card.style.transform = ''; editarGasto(card.dataset.id); }, 200);
+    } else if (moved < -_swipe.threshold) {
+      card.style.transform = `translateX(-${_swipe.maxSwipe}px)`;
+      const id = card.dataset.id;
+      const concepto = card.dataset.concepto;
+      const ok = await modalConfirm(`¿Borrar "${concepto}"?`);
+      if (ok) {
+        card.style.transform = `translateX(-100%)`;
+        card.style.opacity = '0';
+        await borrarGasto_direct(id);
       } else {
         card.style.transform = '';
       }
-    });
+    } else {
+      card.style.transform = '';
+    }
   });
 }
 
