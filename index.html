@@ -13,18 +13,16 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <!-- PERF: preconnects para CDNs -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <!-- PERF: Google Fonts vía link (no @import que bloquea render) con display=swap -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS (CDN JIT — necesario para clases dinámicas) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- PERF: Chart.js cargado con defer (no bloquea el render inicial) -->
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- PERF: Font Awesome cargado async (no bloquea render) -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">;
-  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"></noscript>
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <style>
 /* PERF: Google Fonts loaded via <link> in <head> instead of @import */
 :root{--bg:#f1f5f9;--bg2:#eef2f7;--surface:rgba(255,255,255,.95);--surface-solid:#fff;--border:rgba(226,232,240,.8);--border-solid:#e2e8f0;--text:#1e293b;--text2:#334155;--text3:#64748b;--text4:#94a3b8;--input-bg:#fff;--input-border:#cbd5e1;--pill-bg:#f1f5f9;--pill-border:#e2e8f0;--pill-text:#475569;--card-shadow:0 4px 6px -1px rgba(0,0,0,.1);--kpi-bg:#f8fafc}
