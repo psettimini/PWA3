@@ -12,19 +12,11 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-  <!-- PERF: preconnects para CDNs -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- PERF: Google Fonts vía link (no @import que bloquea render) con display=swap -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Tailwind CSS (CDN JIT — necesario para clases dinámicas) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- PERF: Chart.js cargado con defer (no bloquea el render inicial) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <style>
-/* PERF: Google Fonts loaded via <link> in <head> instead of @import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 :root{--bg:#f1f5f9;--bg2:#eef2f7;--surface:rgba(255,255,255,.95);--surface-solid:#fff;--border:rgba(226,232,240,.8);--border-solid:#e2e8f0;--text:#1e293b;--text2:#334155;--text3:#64748b;--text4:#94a3b8;--input-bg:#fff;--input-border:#cbd5e1;--pill-bg:#f1f5f9;--pill-border:#e2e8f0;--pill-text:#475569;--card-shadow:0 4px 6px -1px rgba(0,0,0,.1);--kpi-bg:#f8fafc}
 .dark{--bg:#0f172a;--bg2:#1e293b;--surface:rgba(30,41,59,.95);--surface-solid:#1e293b;--border:rgba(51,65,85,.8);--border-solid:#334155;--text:#f1f5f9;--text2:#cbd5e1;--text3:#94a3b8;--text4:#64748b;--input-bg:#0f172a;--input-border:#475569;--pill-bg:#334155;--pill-border:#475569;--pill-text:#cbd5e1;--card-shadow:0 4px 6px -1px rgba(0,0,0,.3);--kpi-bg:#334155}
 html{padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
@@ -1343,11 +1335,6 @@ function exportarCSV(){let csv='Fecha,Centro,Tipo,Concepto,Metodo,Importe,ID\n';
    DASHBOARD
 ======================================== */
 function renderDashboard() {
-  /* PERF: guard para carga diferida de Chart.js */
-  if (typeof Chart === 'undefined') {
-    setTimeout(renderDashboard, 200);
-    return;
-  }
   let total=0, fijos=0; const porMes=Object.create(null), porCentro=Object.create(null);
   const hoy = new Date();
   const mesActualKey = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
@@ -1436,7 +1423,6 @@ function initComparar() {
 }
 
 function renderComparar() {
-  if (typeof Chart === 'undefined') { setTimeout(renderComparar, 200); return; }
   const m1=$('comp-mes1').value,m2=$('comp-mes2').value,vista=$('comp-vista').value;
   if(!m1||!m2){limpiarComparar();return;}
   const d1=allData.filter(g=>g.Fecha&&g.Fecha.startsWith(m1)),d2=allData.filter(g=>g.Fecha&&g.Fecha.startsWith(m2));
