@@ -510,7 +510,7 @@ const formatearNumero = n => parseInt(n || 0, 10).toLocaleString('es-AR');
 /* PERF: debounce genérico para inputs de búsqueda */
 function debounce(fn, ms = 150) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }
 /* ── SEGURIDAD: escape HTML para prevenir XSS ── */
-const escapeHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const escapeHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/\x3c/g,'&lt;').replace(/\x3e/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const escapeAttr = s => escapeHtml(s);
 const csvEscape = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 const getMesKey = f => f ? String(f).slice(0, 7) : '';
