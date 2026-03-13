@@ -1,1 +1,89 @@
-const CACHE_VERSION = 'gastos-pwa-v1.0.4';const STATIC_CACHE = `${CACHE_VERSION}-static`;const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;const APP_SHELL = [  './',  'index.html',  'manifest.json',  'icon-192.png',  'icon-512.png',  'apple-touch-icon.png'];self.addEventListener('install', (event) => {  self.skipWaiting();  event.waitUntil(    caches.open(STATIC_CACHE).then((cache) => cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' })))).catch(() => {})  );});self.addEventListener('activate', (event) => {  event.waitUntil((async () => {    const keys = await caches.keys();    await Promise.all(keys.filter((k) => ![STATIC_CACHE, RUNTIME_CACHE].includes(k)).map((k) => caches.delete(k)));    await self.clients.claim();  })());});function isSameOrigin(url) {  return url.origin === self.location.origin;}function isStaticAsset(req) {  const dest = req.destination;  return ['style', 'script', 'image', 'font', 'document'].includes(dest);}async function networkFirst(req) {  const cache = await caches.open(RUNTIME_CACHE);  try {    const fresh = await fetch(req);    if (fresh && fresh.ok && req.method === 'GET') {      cache.put(req, fresh.clone());    }    return fresh;  } catch (err) {    const cached = await cache.match(req, { ignoreSearch: false });    if (cached) return cached;    throw err;  }}async function staleWhileRevalidate(req) {  const cache = await caches.open(RUNTIME_CACHE);  const cached = await cache.match(req, { ignoreSearch: false });  const fetchPromise = fetch(req)    .then((res) => {      if (res && res.ok && req.method === 'GET') cache.put(req, res.clone());      return res;    })    .catch(() => null);  return cached || fetchPromise || Response.error();}self.addEventListener('fetch', (event) => {  const req = event.request;  const url = new URL(req.url);  if (req.method !== 'GET') return;  // No cache for Google Apps Script API or other cross-origin dynamic endpoints.  if (!isSameOrigin(url)) {    return;  }  if (req.mode === 'navigate') {    event.respondWith(networkFirst(req));    return;  }  if (isStaticAsset(req)) {    event.respondWith(staleWhileRevalidate(req));  }});self.addEventListener('message', (event) => {  if (event.data && event.data.type === 'SKIP_WAITING') {    self.skipWaiting();  }});
+const CACHE_VERSION = 'gastos-pwa-v1.1.1';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
+const APP_SHELL = [
+  './',
+  'index.html',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png',
+  'apple-touch-icon.png'
+];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then((cache) => cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' })))).catch(() => {})
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => ![STATIC_CACHE, RUNTIME_CACHE].includes(k)).map((k) => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+function isSameOrigin(url) {
+  return url.origin === self.location.origin;
+}
+
+function isStaticAsset(req) {
+  const dest = req.destination;
+  return ['style', 'script', 'image', 'font', 'document'].includes(dest);
+}
+
+async function networkFirst(req) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  try {
+    const fresh = await fetch(req);
+    if (fresh && fresh.ok && req.method === 'GET') {
+      cache.put(req, fresh.clone());
+    }
+    return fresh;
+  } catch (err) {
+    const cached = await cache.match(req, { ignoreSearch: false });
+    if (cached) return cached;
+    throw err;
+  }
+}
+
+async function staleWhileRevalidate(req) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const cached = await cache.match(req, { ignoreSearch: false });
+  const fetchPromise = fetch(req)
+    .then((res) => {
+      if (res && res.ok && req.method === 'GET') cache.put(req, res.clone());
+      return res;
+    })
+    .catch(() => null);
+  return cached || fetchPromise || Response.error();
+}
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+
+  if (req.method !== 'GET') return;
+
+  // No cache for Google Apps Script API or other cross-origin dynamic endpoints.
+  if (!isSameOrigin(url)) {
+    return;
+  }
+
+  if (req.mode === 'navigate') {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
+  if (isStaticAsset(req)) {
+    event.respondWith(staleWhileRevalidate(req));
+  }
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
