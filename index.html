@@ -267,18 +267,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
               <label for="metodo" class="block text-sm font-medium text-slate-700 mb-1">Método de Pago</label>
               <select id="metodo" class="w-full px-4 py-2 rounded-lg border border-slate-300">
                 <option value="Macro Manual">Macro Manual</option>
-                <option value="Macro transferencia">Macro Transferencia</option>
-                <option value="VISA MACRO">VISA Macro</option>
-                <option value="VISA BBVA">VISA BBVA</option>
-                <option value="VISA GALICIA">VISA Galicia</option>
-                <option value="MASTER BBVA">Master BBVA</option>
-                <option value="AMEX">AMEX</option>
-                <option value="Ualá">Ualá</option>
-                <option value="Efectivo">Efectivo</option>
-                <option value="Debito CA BBVA">Débito CA BBVA</option>
-                <option value="VEP - GALICIA">VEP - Galicia</option>
-                <option value="Macro tarjeta debito">Macro Tarjeta Débito</option>
-                <option value="Pagado por el año">Pagado por el año</option>
               </select>
             </div>
           </div>
@@ -419,7 +407,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   </div>
 
   <!-- ==================== CONFIG ==================== -->
-  <div id="section-config" class="hidden fade-in">
+  <div id="section-config" class="hidden fade-in space-y-6">
     <div class="glass-panel rounded-2xl p-6 max-w-2xl">
       <h2 class="text-2xl font-bold mb-6">Configuración</h2>
       <div class="space-y-4">
@@ -452,6 +440,28 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           <p class="text-sm text-blue-700">Safari → <i class="fas fa-share-square"></i> Compartir → <strong>"Agregar a Inicio"</strong></p>
         </div>
       </div>
+    </div>
+
+    <!-- ==================== ABM CENTROS DE GASTO ==================== -->
+    <div class="glass-panel rounded-2xl p-6 max-w-2xl">
+      <h3 class="font-bold text-lg mb-1"><i class="fas fa-building text-blue-600 mr-2"></i>Centros de Gasto</h3>
+      <p class="text-xs mb-4" style="color:var(--text3)">Agregar, renombrar o fusionar. Los cambios se aplican a todos los registros históricos.</p>
+      <div class="flex gap-2 mb-4">
+        <input type="text" id="abm-centro-nuevo" placeholder="Nuevo centro..." class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-sm">
+        <button type="button" onclick="abmAdd('Centro')" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold"><i class="fas fa-plus mr-1"></i>Agregar</button>
+      </div>
+      <div id="abm-centros-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
+    </div>
+
+    <!-- ==================== ABM MÉTODOS DE PAGO ==================== -->
+    <div class="glass-panel rounded-2xl p-6 max-w-2xl">
+      <h3 class="font-bold text-lg mb-1"><i class="fas fa-credit-card text-emerald-600 mr-2"></i>Métodos de Pago</h3>
+      <p class="text-xs mb-4" style="color:var(--text3)">Agregar, renombrar o fusionar. Los cambios se aplican a todos los registros históricos.</p>
+      <div class="flex gap-2 mb-4">
+        <input type="text" id="abm-metodo-nuevo" placeholder="Nuevo método..." class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-sm">
+        <button type="button" onclick="abmAdd('Metodo')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold"><i class="fas fa-plus mr-1"></i>Agregar</button>
+      </div>
+      <div id="abm-metodos-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
     </div>
   </div>
 
@@ -878,6 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if ($('fecha')) $('fecha').valueAsDate = new Date();
   const appVersionEl = $('app-version');
   if (appVersionEl) appVersionEl.textContent = `Versión ${APP_VERSION}`;
+  updateMetodoSelect();
   checkSetup();
   showTab(currentTab);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1080,6 +1091,7 @@ function showTab(tab) {
   if (tab==='historial') { restoreHistoryFilters(); renderHistorial(); }
   if (tab==='dashboard') renderDashboard();
   if (tab==='comparar') initComparar();
+  if (tab==='config') renderABM();
 }
 
 /* ========================================
@@ -1104,10 +1116,11 @@ function procesarPatrones() {
   const centros = [...centrosSet].sort();
   const metodos = [...metodosSet].sort();
   const meses = [...mesesSet].sort();
-  $('centros-list').innerHTML = centros.map(c=>`<option value="${escapeAttr(c)}">`).join('');
+  $('centros-list').innerHTML = [...new Set([...centros, ...getCustomValues('Centro')])].sort().map(c=>`<option value="${escapeAttr(c)}">`).join('');
   $('filtro-centro').innerHTML = '<option value="todos">Todos los centros</option>' + centros.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
-  $('filtro-metodo').innerHTML = '<option value="todos">Todos los métodos</option>' + metodos.map(m=>`<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
+  $('filtro-metodo').innerHTML = '<option value="todos">Todos los métodos</option>' + getAllValuesForField('Metodo').map(m=>`<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
   $('filtro-mes-historial').innerHTML = '<option value="todos">Todos los meses</option>' + meses.map(m=>`<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
+  updateMetodoSelect();
 }
 
 /* ========================================
@@ -1459,6 +1472,188 @@ function limpiarComparar(){
   $('comp-tabla-body').innerHTML='<tr><td colspan="6" class="py-8 text-center text-slate-400">Seleccioná dos meses</td></tr>';
   $('comp-tabla-foot').innerHTML='';$('comp-nuevos').innerHTML='<p class="text-sm text-slate-400 italic">Seleccioná dos meses</p>';$('comp-eliminados').innerHTML='<p class="text-sm text-slate-400 italic">Seleccioná dos meses</p>';
   destroyChart('compBarras');destroyChart('compDonut1');destroyChart('compDonut2');
+}
+
+/* ========================================
+   ABM CENTROS / MÉTODOS
+======================================== */
+const METODOS_DEFAULT = ['Macro Manual','Macro transferencia','VISA MACRO','VISA BBVA','VISA GALICIA','MASTER BBVA','AMEX','Ualá','Efectivo','Debito CA BBVA','VEP - GALICIA','Macro tarjeta debito','Pagado por el año'];
+
+function getCustomValues(field) {
+  try { return JSON.parse(localStorage.getItem('gastos_custom_' + field) || '[]'); } catch { return []; }
+}
+function saveCustomValues(field, arr) {
+  localStorage.setItem('gastos_custom_' + field, JSON.stringify(arr));
+}
+
+function getAllValuesForField(field) {
+  const fromData = uniqueSorted(allData.map(g => g[field]).filter(Boolean));
+  const custom = getCustomValues(field);
+  if (field === 'Metodo') {
+    return uniqueSorted([...new Set([...METODOS_DEFAULT, ...fromData, ...custom])]);
+  }
+  return uniqueSorted([...new Set([...fromData, ...custom])]);
+}
+
+function getStatsForField(field) {
+  const st = Object.create(null);
+  for (const g of allData) {
+    const v = g[field] || '';
+    if (!v) continue;
+    if (!st[v]) st[v] = { n: 0, t: 0 };
+    st[v].n++;
+    st[v].t += safeNumber(g.Importe);
+  }
+  return st;
+}
+
+function renderABM() {
+  renderABMList('Centro');
+  renderABMList('Metodo');
+}
+
+function renderABMList(field) {
+  const containerId = field === 'Centro' ? 'abm-centros-list' : 'abm-metodos-list';
+  const container = $(containerId);
+  if (!container) return;
+  const values = getAllValuesForField(field);
+  const stats = getStatsForField(field);
+
+  if (!values.length) {
+    container.innerHTML = '<p class="text-sm italic" style="color:var(--text4)">Sin datos aún</p>';
+    return;
+  }
+
+  container.innerHTML = values.map(v => {
+    const s = stats[v];
+    const countText = s ? `${s.n} reg. · $${formatearNumero(s.t)}` : 'Sin registros';
+    const countClass = s ? '' : 'italic';
+    return `<div class="flex items-center gap-2 p-3 rounded-lg border" style="border-color:var(--border-solid);background:var(--kpi-bg)">
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-sm truncate" style="color:var(--text)">${escapeHtml(v)}</div>
+        <div class="text-xs ${countClass}" style="color:var(--text3)">${countText}</div>
+      </div>
+      <button onclick="abmRename('${field}','${escapeAttr(v)}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50" title="Renombrar"><i class="fas fa-pen text-xs"></i></button>
+      <button onclick="abmMerge('${field}','${escapeAttr(v)}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-amber-600 hover:bg-amber-50" title="Fusionar con otro"><i class="fas fa-compress-alt text-xs"></i></button>
+      ${!s ? `<button onclick="abmRemoveCustom('${field}','${escapeAttr(v)}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-red-600 hover:bg-red-50" title="Eliminar"><i class="fas fa-trash text-xs"></i></button>` : ''}
+    </div>`;
+  }).join('');
+
+  // Actualizar el select de método de pago en el formulario de carga
+  if (field === 'Metodo') updateMetodoSelect();
+}
+
+function updateMetodoSelect() {
+  const sel = $('metodo');
+  if (!sel) return;
+  const current = sel.value;
+  const values = getAllValuesForField('Metodo');
+  sel.innerHTML = values.map(m => `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`).join('');
+  if (current && values.includes(current)) sel.value = current;
+}
+
+function abmAdd(field) {
+  const inputId = field === 'Centro' ? 'abm-centro-nuevo' : 'abm-metodo-nuevo';
+  const input = $(inputId);
+  const name = (input?.value || '').trim();
+  if (!name) { toastWarn('Ingresá un nombre'); return; }
+
+  const existing = getAllValuesForField(field);
+  if (existing.some(v => v.toLowerCase() === name.toLowerCase())) {
+    toastWarn('Ya existe');
+    return;
+  }
+
+  const custom = getCustomValues(field);
+  custom.push(name);
+  saveCustomValues(field, custom);
+  input.value = '';
+  toast(`${field === 'Centro' ? 'Centro' : 'Método'} agregado`);
+  renderABMList(field);
+  // Actualizar datalist de centros si corresponde
+  if (field === 'Centro') {
+    const dl = $('centros-list');
+    if (dl) dl.innerHTML += `<option value="${escapeAttr(name)}">`;
+  }
+}
+
+function abmRemoveCustom(field, value) {
+  const custom = getCustomValues(field).filter(v => v !== value);
+  saveCustomValues(field, custom);
+  toast('Eliminado');
+  renderABMList(field);
+}
+
+async function abmRename(field, oldValue) {
+  const label = field === 'Centro' ? 'centro' : 'método';
+  const newValue = prompt(`Renombrar "${oldValue}"\nNuevo nombre para este ${label}:`, oldValue);
+  if (!newValue || !newValue.trim() || newValue.trim() === oldValue) return;
+
+  const stats = getStatsForField(field);
+  const count = stats[oldValue]?.n || 0;
+
+  if (count > 0) {
+    const ok = await modalConfirm(`Se van a actualizar ${count} registros de "${oldValue}" a "${newValue.trim()}". ¿Continuar?`);
+    if (!ok) return;
+  }
+
+  if (count > 0) {
+    showLoading(true);
+    try {
+      const r = await requestApi('bulkRename', { field, oldValue, newValue: newValue.trim() }, { preferPost: true, allowGetFallback: false });
+      if (r.success) {
+        toast(`${r.count} registros actualizados`);
+        // Actualizar custom values si existía
+        const custom = getCustomValues(field);
+        const idx = custom.indexOf(oldValue);
+        if (idx >= 0) { custom[idx] = newValue.trim(); saveCustomValues(field, custom); }
+        await cargarDatos();
+      } else {
+        toastError(r.error || 'Error');
+      }
+    } catch (e) { toastError(e.message); }
+    finally { showLoading(false); }
+  } else {
+    // Solo renombrar en custom (sin registros en el sheet)
+    const custom = getCustomValues(field);
+    const idx = custom.indexOf(oldValue);
+    if (idx >= 0) { custom[idx] = newValue.trim(); saveCustomValues(field, custom); }
+    toast('Renombrado');
+    renderABMList(field);
+  }
+}
+
+async function abmMerge(field, sourceValue) {
+  const label = field === 'Centro' ? 'centro' : 'método';
+  const values = getAllValuesForField(field).filter(v => v !== sourceValue);
+  if (!values.length) { toastWarn('No hay otro valor para fusionar'); return; }
+
+  const targetValue = prompt(
+    `Fusionar "${sourceValue}" → ¿a cuál ${label}?\n\nOpciones existentes:\n${values.join('\n')}\n\nEscribí el nombre exacto del destino:`
+  );
+  if (!targetValue || !targetValue.trim()) return;
+
+  const stats = getStatsForField(field);
+  const count = stats[sourceValue]?.n || 0;
+  if (count === 0) { toastWarn('No hay registros para fusionar'); return; }
+
+  const ok = await modalConfirm(`Fusionar ${count} registros de "${sourceValue}" → "${targetValue.trim()}". ¿Continuar?`);
+  if (!ok) return;
+
+  showLoading(true);
+  try {
+    const r = await requestApi('bulkRename', { field, oldValue: sourceValue, newValue: targetValue.trim() }, { preferPost: true, allowGetFallback: false });
+    if (r.success) {
+      toast(`${r.count} registros fusionados`);
+      // Limpiar de custom si existía
+      const custom = getCustomValues(field).filter(v => v !== sourceValue);
+      saveCustomValues(field, custom);
+      await cargarDatos();
+    } else {
+      toastError(r.error || 'Error');
+    }
+  } catch (e) { toastError(e.message); }
+  finally { showLoading(false); }
 }
 
 /* ========================================
