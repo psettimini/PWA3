@@ -149,7 +149,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   .filter-row{display:grid!important;grid-template-columns:1fr!important;width:100%!important;gap:.55rem!important}
   .comp-selectors{display:grid!important;grid-template-columns:1fr!important;width:100%!important;gap:.55rem!important}
   .comp-selectors select{width:100%}
-  #section-dashboard .grid,#section-comparar .grid,#section-centros .grid{gap:1rem!important}
+  #section-dashboard .grid,#section-comparar .grid{gap:1rem!important}
   canvas{max-width:100%!important}
 }
 @media(min-width:769px){.mobile-cards{display:none!important}}
@@ -212,7 +212,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <button type="button" onclick="showTab('historial')" id="tab-historial" class="py-5 px-2 text-slate-600">Historial</button>
         <button type="button" onclick="showTab('dashboard')" id="tab-dashboard" class="py-5 px-2 text-slate-600">Dashboard</button>
         <button type="button" onclick="showTab('comparar')" id="tab-comparar" class="py-5 px-2 text-slate-600">Comparar</button>
-        <button type="button" onclick="showTab('centros')" id="tab-centros" class="py-5 px-2 text-slate-600">Centros</button>
         <button type="button" onclick="showTab('config')" id="tab-config" class="py-5 px-2 text-slate-600"><i class="fas fa-cog"></i></button>
       </div>
     </div>
@@ -419,18 +418,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     </div>
   </div>
 
-  <!-- ==================== CENTROS ==================== -->
-  <div id="section-centros" class="hidden fade-in">
-    <div class="glass-panel rounded-2xl p-6">
-      <h2 class="text-2xl font-bold mb-6">Centros de Gasto</h2>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-slate-50 rounded-xl p-6"><h3 class="font-bold mb-4">Agregar</h3><div class="flex gap-2"><input type="text" id="nuevo-centro" placeholder="Nombre" class="flex-1 px-4 py-2 rounded-lg border border-slate-300"><button type="button" onclick="agregarCentro()" class="px-4 bg-blue-600 text-white rounded-lg"><i class="fas fa-plus"></i></button></div></div>
-        <div class="bg-slate-50 rounded-xl p-6"><h3 class="font-bold mb-4">Unificar</h3><select id="unificar-desde" class="w-full px-4 py-2 rounded-lg border border-slate-300 mb-2"><option value="">Reemplazar...</option></select><select id="unificar-hacia" class="w-full px-4 py-2 rounded-lg border border-slate-300 mb-3"><option value="">Correcto...</option></select><button type="button" onclick="unificarCentros()" class="w-full bg-amber-500 text-white py-2 rounded-lg"><i class="fas fa-compress-alt mr-2"></i>Unificar</button></div>
-      </div>
-      <div class="mt-6"><h3 class="font-bold mb-4">Existentes <span id="total-centros" class="text-sm font-normal text-slate-500"></span></h3><div id="lista-centros" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div></div>
-    </div>
-  </div>
-
   <!-- ==================== CONFIG ==================== -->
   <div id="section-config" class="hidden fade-in">
     <div class="glass-panel rounded-2xl p-6 max-w-2xl">
@@ -476,7 +463,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <button type="button" onclick="showTab('historial')" id="bnav-historial"><i class="fas fa-list"></i><span>Historial</span></button>
   <button type="button" onclick="showTab('dashboard')" id="bnav-dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></button>
   <button type="button" onclick="showTab('comparar')" id="bnav-comparar"><i class="fas fa-balance-scale"></i><span>Comparar</span></button>
-  <button type="button" onclick="showTab('centros')" id="bnav-centros"><i class="fas fa-building"></i><span>Centros</span></button>
   <button type="button" onclick="showTab('config')" id="bnav-config"><i class="fas fa-cog"></i><span>Config</span></button>
 </div>
 
@@ -1081,7 +1067,7 @@ async function borrarGasto(id, concepto) {
 function showTab(tab) {
   currentTab = tab;
   localStorage.setItem('gastos_tab', tab);
-  ['carga','historial','dashboard','comparar','centros','config'].forEach(t => {
+  ['carga','historial','dashboard','comparar','config'].forEach(t => {
     $('section-'+t)?.classList.add('hidden');
     // Top tabs
     const b = $('tab-'+t); if (b) { b.classList.remove('tab-active'); b.classList.add('text-slate-600'); }
@@ -1094,7 +1080,6 @@ function showTab(tab) {
   if (tab==='historial') { restoreHistoryFilters(); renderHistorial(); }
   if (tab==='dashboard') renderDashboard();
   if (tab==='comparar') initComparar();
-  if (tab==='centros') renderCentros();
 }
 
 /* ========================================
@@ -1475,19 +1460,6 @@ function limpiarComparar(){
   $('comp-tabla-foot').innerHTML='';$('comp-nuevos').innerHTML='<p class="text-sm text-slate-400 italic">Seleccioná dos meses</p>';$('comp-eliminados').innerHTML='<p class="text-sm text-slate-400 italic">Seleccioná dos meses</p>';
   destroyChart('compBarras');destroyChart('compDonut1');destroyChart('compDonut2');
 }
-
-/* ========================================
-   CENTROS
-======================================== */
-function renderCentros(){
-  const centros=uniqueSorted(allData.map(g=>g.Centro));$('total-centros').textContent=`(${centros.length})`;
-  const st=Object.create(null);for(const g of allData){const c=g.Centro||'';if(!c)continue;if(!st[c])st[c]={n:0,t:0};st[c].n++;st[c].t+=safeNumber(g.Importe);}
-  $('lista-centros').innerHTML=centros.map(c=>`<div class="bg-white border rounded-lg p-3 flex justify-between"><div><div class="font-medium text-sm">${escapeHtml(c)}</div><div class="text-xs text-slate-500">${st[c]?.n||0} · $${formatearNumero(st[c]?.t||0)}</div></div></div>`).join('');
-  const opts='<option value="">Seleccionar...</option>'+centros.map(c=>`<option value="${escapeAttr(c)}">${escapeHtml(c)}</option>`).join('');
-  $('unificar-desde').innerHTML=opts;$('unificar-hacia').innerHTML=opts;
-}
-function agregarCentro(){const n=$('nuevo-centro').value.trim();if(!n){toastWarn('Ingresá nombre');return;}$('centros-list').innerHTML+=`<option value="${escapeAttr(n)}">`;$('nuevo-centro').value='';toast('Centro agregado');renderCentros();}
-function unificarCentros(){toastWarn('Función en desarrollo.');}
 
 /* ========================================
    SWIPE CARDS (historial mobile) — Event Delegation
